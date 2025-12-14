@@ -1,6 +1,6 @@
 {
   "name": "medusa-backup",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "DB Backup and Restore for Medusa.js",
   "author": "Ameer Rizvi (https://github.com/AmeerRizvi)",
   "license": "MIT",
