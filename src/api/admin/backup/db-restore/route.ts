@@ -29,6 +29,9 @@ export async function POST(req, res) {
     }
 
     let { DB_BASE, DB_NAME } = extractDbConfig()
+
+    const DB_ADMIN_URL = `${DB_BASE}/postgres`
+
     const { url } = JSON.parse(req.body)
     if (!url) return res.status(400).json({ error: "Backup URL is required" })
 
@@ -42,22 +45,22 @@ export async function POST(req, res) {
     let cmd = `pg_dump -d "${DB_URL}" -t db_backups -f "${backupRecordsPath}"`
     await execAsync(cmd)
 
-    cmd = `psql "${DB_BASE}" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DB_NAME}';"`
+    cmd = `psql "${DB_ADMIN_URL}" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DB_NAME}';"`
     await execAsync(cmd)
 
-    cmd = `psql "${DB_BASE}" -c "DROP DATABASE IF EXISTS \\"${DB_NAME}\\";"`
+    cmd = `psql "${DB_ADMIN_URL}" -c "DROP DATABASE IF EXISTS \\"${DB_NAME}\\";"`
     await execAsync(cmd)
 
-    cmd = `psql "${DB_BASE}" -c "CREATE DATABASE \\"${DB_NAME}\\";"`
+    cmd = `psql "${DB_ADMIN_URL}" -c "CREATE DATABASE \\"${DB_NAME}\\";"`
     await execAsync(cmd)
 
-    cmd = `psql "${DB_BASE}/${DB_NAME}" -f "${backupFilePath}"`
+    cmd = `psql "${DB_URL}" -f "${backupFilePath}"`
     await execAsync(cmd)
 
-    cmd = `psql "${DB_BASE}/${DB_NAME}" -c "DROP TABLE IF EXISTS db_backups;"`
+    cmd = `psql "${DB_URL}" -c "DROP TABLE IF EXISTS db_backups;"`
     await execAsync(cmd)
 
-    cmd = `psql "${DB_BASE}/${DB_NAME}" -f "${backupRecordsPath}"`
+    cmd = `psql "${DB_URL}" -f "${backupRecordsPath}"`
     await execAsync(cmd)
 
     fs.rmSync(tempDir, { recursive: true, force: true })
