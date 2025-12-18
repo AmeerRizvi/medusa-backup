@@ -11,27 +11,27 @@ import { BACKUPS_MODULE } from "../../../modules/backups"
 const TEMP_DIR = os.tmpdir()
 
 export async function extractZipFromUrl(url: string): Promise<string> {
+  const decodedUrl = decodeURIComponent(url)
   const tempDir = path.join(TEMP_DIR, "restore")
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir)
-
-  const response = await fetch(url)
-  if (!response.ok || !response.body) {
-    throw new Error("Failed to fetch ZIP from URL")
+  const response = await fetch(decodedUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ZIP: ${response.status} ${response.statusText}`)
   }
-
-  const base64 = Buffer.from(await response.arrayBuffer()).toString("utf-8")
-  const buffer = Buffer.from(base64, "base64")
-
+  const buffer = Buffer.from(await response.arrayBuffer())
+  if (buffer.readUInt32LE(0) !== 0x04034b50) {
+    throw new Error("Downloaded file is not a valid ZIP archive")
+  }
   await new Promise((resolve, reject) => {
     Readable.from(buffer)
       .pipe(unzipper.Extract({ path: tempDir }))
       .on("close", resolve)
       .on("error", reject)
   })
-
   const sqlFile = fs.readdirSync(tempDir).find((f) => f.endsWith(".sql"))
-  if (!sqlFile) throw new Error("No SQL file found in extracted ZIP")
-
+  if (!sqlFile) {
+    throw new Error("No SQL file found in extracted ZIP")
+  }
   return path.join(tempDir, sqlFile)
 }
 
